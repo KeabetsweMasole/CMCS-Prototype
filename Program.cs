@@ -1,39 +1,46 @@
-﻿/*var builder = WebApplication.CreateBuilder(args);
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http.Features;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 
-builder.Services.AddControllersWithViews();
-builder.Services.AddSession();
-builder.Services.AddHttpContextAccessor();
-
-var app = builder.Build();
-
-app.UseStaticFiles();
-app.UseRouting();
-
-app.UseSession();
-
-app.MapDefaultControllerRoute();
-app.Run();*/
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
+// MVC + runtime compilation helpful for Razor during dev (optional)
 builder.Services.AddControllersWithViews();
+
+// For prototype: increase limit for file uploads in case of test files
+builder.Services.Configure<FormOptions>(options =>
+{
+    options.MultipartBodyLengthLimit = 10 * 1024 * 1024; // 10MB
+});
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Home/Error");
-    // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
     app.UseHsts();
 }
 
 app.UseHttpsRedirection();
 app.UseStaticFiles();
-
 app.UseRouting();
 
-app.UseAuthorization();
+// simple cookie-based role simulation (no real auth)
+app.Use(async (context, next) =>
+{
+    // if no role cookie set, default to Lecturer (for prototype)
+    if (!context.Request.Cookies.ContainsKey("CMCS_Role"))
+    {
+        context.Response.Cookies.Append("CMCS_Role", "Lecturer");
+    }
+    await next();
+});
+if (!app.Environment.IsDevelopment())
+{
+    app.UseExceptionHandler("/Home/Error");
+    app.UseHsts();
+}
 
 app.MapControllerRoute(
     name: "default",
